@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useId } from 'react';
 import { format, parseISO } from 'date-fns';
 import { zhCN } from 'date-fns/locale/zh-CN';
 
 export default function ChartView({ cashFlowData }) {
+  const gradientId = useId();
   const [tooltip, setTooltip] = useState(null);
 
   if (!cashFlowData || cashFlowData.length === 0) {
@@ -29,7 +30,7 @@ export default function ChartView({ cashFlowData }) {
   const chartW = W - PAD_L - PAD_R;
   const chartH = H - PAD_T - PAD_B;
 
-  const xScale = (i) => PAD_L + (i / (cashFlowData.length - 1)) * chartW;
+  const xScale = (i) => PAD_L + (i / Math.max(1, cashFlowData.length - 1)) * chartW;
   const yScale = (v) => PAD_T + chartH - ((v - minBalance) / range) * chartH;
 
   const linePath = cashFlowData.map((d, i) => `${i === 0 ? 'M' : 'L'} ${xScale(i)} ${yScale(d.balance)}`).join(' ');
@@ -92,12 +93,12 @@ export default function ChartView({ cashFlowData }) {
       <div className="chart-wrapper">
         <svg width={W} height={H} className="cashflow-chart">
           <defs>
-            <linearGradient id="areaGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <linearGradient id={`${gradientId}-area`} x1="0%" y1="0%" x2="0%" y2="100%">
               <stop offset="0%" stopColor="#667eea" stopOpacity="0.3" />
               <stop offset="50%" stopColor="#764ba2" stopOpacity="0.2" />
               <stop offset="100%" stopColor="#f093fb" stopOpacity="0.1" />
             </linearGradient>
-            <linearGradient id="lineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <linearGradient id={`${gradientId}-line`} x1="0%" y1="0%" x2="100%" y2="0%">
               <stop offset="0%" stopColor="#667eea" />
               <stop offset="50%" stopColor="#764ba2" />
               <stop offset="100%" stopColor="#f093fb" />
@@ -122,8 +123,8 @@ export default function ChartView({ cashFlowData }) {
             </g>
           )}
 
-          <path d={areaPath} fill="url(#areaGrad)" opacity="0.6" />
-          <path d={linePath} fill="none" stroke="url(#lineGrad)" strokeWidth="3" />
+          <path d={areaPath} fill={`url(#${gradientId}-area)`} opacity="0.6" />
+          <path d={linePath} fill="none" stroke={`url(#${gradientId}-line)`} strokeWidth="3" />
 
           {cashFlowData.map((d, i) => {
             const isHovered = tooltip && tooltip.date === d.date;
@@ -171,3 +172,4 @@ export default function ChartView({ cashFlowData }) {
     </div>
   );
 }
+

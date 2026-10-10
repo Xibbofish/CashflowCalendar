@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { format, subDays, addDays, parseISO } from 'date-fns';
+import useLocalDay from './useLocalDay.js';
 import { computeDailyBalances, getBalanceOnDate } from './engine';
 import { format as formatDate } from 'date-fns';
 import CalendarView from './components/CalendarView';
@@ -8,6 +9,7 @@ import EventForm from './components/EventForm';
 import EventList from './components/EventList';
 import SimulationPanel from './components/SimulationPanel';
 import DataManager from './components/DataManager';
+import MonthlyReport from './components/MonthlyReport';
 import './App.css';
 
 const STORAGE_KEY = 'cashflow-calendar-data';
@@ -32,7 +34,9 @@ function saveState(state) {
 
 export default function App() {
   const [state, setState] = useState(loadState);
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const todayStr = useLocalDay();
+  const [browsedDate, setCurrentDate] = useState(null);
+  const currentDate = browsedDate || parseISO(todayStr);
   const [viewMode, setViewMode] = useState('month');
   const [showForm, setShowForm] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
@@ -53,7 +57,6 @@ export default function App() {
     [state.initialBalance, allEvents, rangeStart, rangeEnd]
   );
 
-  const todayStr = format(new Date(), 'yyyy-MM-dd');
   const todayBalance = useMemo(() => {
     const today = cashFlowData.find((d) => d.date === todayStr);
     if (today) return today.balance;
@@ -129,7 +132,7 @@ export default function App() {
     const currentComputed = getBalanceOnDate(state.initialBalance, allEvents, formatDate(today, 'yyyy-MM-dd'));
     const newInitial = state.initialBalance + (newBalance - currentComputed);
     setState((s) => ({ ...s, initialBalance: newInitial }));
-  }, [state.events, state.simulationEvents]);
+  }, [state.events, state.simulationEvents, state.initialBalance]);
 
   const handleOpenEdit = useCallback((event) => {
     setEditingEvent(event);
@@ -178,6 +181,8 @@ export default function App() {
           />
 
           <ChartView cashFlowData={cashFlowData} />
+
+          <MonthlyReport state={state} />
         </div>
 
         <aside className="sidebar">
@@ -216,3 +221,4 @@ export default function App() {
     </div>
   );
 }
+

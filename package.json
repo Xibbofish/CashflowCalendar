@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "oxlint",
+    "test": "node --test --experimental-test-isolation=none src/engine.test.js src/markdown-export.test.js src/analysis.test.js src/local-day.test.js",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -22,3 +23,4 @@
     "vite": "^8.2.2"
   }
 }
+

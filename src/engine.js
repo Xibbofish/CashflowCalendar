@@ -13,6 +13,15 @@ export const RecurringType = {
   YEARLY: 'yearly',
 };
 
+// 常用分类（仅作为表单建议，事件分类使用自由文本）
+export const DEFAULT_CATEGORIES = {
+  [EventType.INCOME]: ['工资', '兼职', '理财', '奖金', '其他'],
+  [EventType.EXPENSE]: ['房租', '餐饮', '交通', '购物', '娱乐', '保险', '水电', '医疗', '其他'],
+};
+
+// 未分类时的展示名
+export const UNCATEGORIZED_LABEL = '未分类';
+
 export function normalizeEvent(raw) {
   return {
     id: raw.id || String(Date.now()),
@@ -25,11 +34,19 @@ export function normalizeEvent(raw) {
     recurringStartDate: raw.recurringStartDate || '',
     recurringEndDate: raw.recurringEndDate || '',
     isPermanent: Boolean(raw.isPermanent),
+    occurrenceCount: Number.isSafeInteger(Number(raw.occurrenceCount)) && Number(raw.occurrenceCount) > 0 ? Number(raw.occurrenceCount) : null,
     canSkip: Boolean(raw.canSkip),
     isSimulation: Boolean(raw.isSimulation),
     category: raw.category || '',
     description: raw.description || '',
+    // canSkip=true 时，以下日期（yyyy-MM-dd）对应的本次发生被跳过
+    skippedDates: Array.isArray(raw.skippedDates) ? raw.skippedDates : [],
   };
+}
+
+// 返回事件展示用分类名
+export function eventCategoryLabel(event) {
+  return event.category && event.category.trim() ? event.category.trim() : UNCATEGORIZED_LABEL;
 }
 
 function matchesRecurring(event, currentDate) {
@@ -52,14 +69,27 @@ export function expandEvents(events, rangeStart, rangeEnd) {
   for (const event of events) {
     if (event.isRecurring) {
       const recStart = startOfDay(parseISO(event.recurringStartDate));
-      const recEnd = event.isPermanent
+      const count = !event.isPermanent && Number.isSafeInteger(event.occurrenceCount) && event.occurrenceCount > 0 ? event.occurrenceCount : null;
+      const recEnd = event.isPermanent || count
         ? end
         : (event.recurringEndDate ? startOfDay(parseISO(event.recurringEndDate)) : end);
-      let current = new Date(Math.max(recStart.getTime(), start.getTime()));
+      let current = count ? new Date(recStart) : new Date(Math.max(recStart.getTime(), start.getTime()));
+      let occurrences = 0;
       const stop = new Date(Math.min(recEnd.getTime(), end.getTime()));
+      const skipped = event.canSkip && Array.isArray(event.skippedDates)
+        ? new Set(event.skippedDates)
+        : null;
       while (isBefore(current, stop) || isEqual(current, stop)) {
         if (matchesRecurring(event, current)) {
-          expanded.push({ ...event, date: format(current, 'yyyy-MM-dd') });
+          occurrences += 1;
+          if (count && occurrences > count) break;
+          const dateKey = format(current, 'yyyy-MM-dd');
+          // 可跳过的周期事件：命中某个具体日期则跳过本次发生
+          if (skipped && skipped.has(dateKey)) {
+            current = addDays(current, 1);
+            continue;
+          }
+          if (!isBefore(current, start)) expanded.push({ ...event, date: dateKey });
         }
         current = addDays(current, 1);
       }

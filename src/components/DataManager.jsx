@@ -1,10 +1,28 @@
 import { useState, useRef } from 'react';
 import { normalizeEvent } from '../engine';
+import { createMarkdownExport } from '../markdown-export.js';
 
 export default function DataManager({ state, currentBalance, onImport, onAdjustBalance }) {
   const [adjustAmount, setAdjustAmount] = useState('');
   const [lastImport, setLastImport] = useState(null);
   const fileRef = useRef(null);
+
+  const handleMarkdownExport = () => {
+    try {
+      const { markdown, filename } = createMarkdownExport(state);
+      const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch {
+      alert('Markdown 导出失败，请检查事件日期和数据格式。原有 JSON 备份仍可使用。');
+    }
+  };
 
   const handleExport = () => {
     const json = JSON.stringify(state, null, 2);
@@ -62,10 +80,13 @@ export default function DataManager({ state, currentBalance, onImport, onAdjustB
 
       <div className="data-actions">
         <button className="action-btn export" onClick={handleExport} title="导出数据到文件">📤 导出备份</button>
+        <button className="action-btn export" onClick={handleMarkdownExport} title="导出计划说明、预测对比及完整原始数据，供 AI 分析">📝 导出 Markdown</button>
         <button className="action-btn import" onClick={() => fileRef.current?.click()} title="从文件导入数据">📥 导入备份</button>
         <input ref={fileRef} type="file" accept=".json" onChange={handleImport} style={{ display: 'none' }} />
         <button className="action-btn danger" onClick={handleClear} title="清除所有数据">🗑️ 清除全部</button>
       </div>
+
+      <p className="data-tip">Markdown 包含财务数据与备注，分享给 AI 前请确认内容。导出在本地完成，文件含计划说明、预测对比和完整 JSON；恢复数据请使用 JSON 备份。</p>
 
       <div className="balance-adjust">
         <h5>校准当前余额</h5>

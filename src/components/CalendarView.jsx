@@ -5,6 +5,7 @@ import {
   isSameMonth, format, parseISO,
 } from 'date-fns';
 import { zhCN } from 'date-fns/locale/zh-CN';
+import useLocalDay from '../useLocalDay.js';
 
 const WEEKDAYS = ['一', '二', '三', '四', '五', '六', '日'];
 
@@ -16,6 +17,9 @@ function balanceClass(balance) {
 
 export default function CalendarView({ cashFlowData, currentDate, viewMode, onDateChange, onEventClick }) {
   const [hoveredDay, setHoveredDay] = useState(null);
+  const localToday = useLocalDay();
+  const [selectedDay, setSelectedDay] = useState(null);
+  const detailDay = hoveredDay || selectedDay;
 
   const dateObj = typeof currentDate === 'string' ? parseISO(currentDate) : currentDate;
 
@@ -42,6 +46,8 @@ export default function CalendarView({ cashFlowData, currentDate, viewMode, onDa
   }, [cashFlowData]);
 
   const navigate = (dir) => {
+    setHoveredDay(null);
+    setSelectedDay(null);
     const d = new Date(dateObj);
     if (viewMode === 'month') {
       onDateChange(dir > 0 ? addMonths(d, 1) : subMonths(d, 1));
@@ -50,7 +56,7 @@ export default function CalendarView({ cashFlowData, currentDate, viewMode, onDa
     }
   };
 
-  const today = startOfDay(new Date());
+  const today = startOfDay(parseISO(localToday));
 
   return (
     <div className="calendar-view">
@@ -84,7 +90,13 @@ export default function CalendarView({ cashFlowData, currentDate, viewMode, onDa
             return (
               <div
                 key={key}
-                className={`calendar-day ${isCurrentMonth ? '' : 'other-month'} ${isToday ? 'today' : ''} ${balance !== null ? balanceClass(balance) : ''}`}
+                className={`calendar-day ${isCurrentMonth ? '' : 'other-month'} ${isToday ? 'today' : ''} ${selectedDay === key ? 'selected' : ''} ${balance !== null ? balanceClass(balance) : ''}`}
+                role="button"
+                tabIndex={0}
+                aria-label={`${key}，${balance !== null ? `余额 ${balance.toLocaleString()} 元` : '无余额数据'}`}
+                aria-pressed={selectedDay === key}
+                onClick={() => setSelectedDay(key)}
+                onKeyDown={(ev) => { if (ev.target === ev.currentTarget && (ev.key === 'Enter' || ev.key === ' ')) { ev.preventDefault(); setSelectedDay(key); } }}
                 onMouseEnter={() => setHoveredDay(key)}
                 onMouseLeave={() => setHoveredDay(null)}
               >
@@ -116,14 +128,32 @@ export default function CalendarView({ cashFlowData, currentDate, viewMode, onDa
         </div>
       </div>
 
-      {hoveredDay && balanceMap[hoveredDay] && (
+      {detailDay && balanceMap[detailDay] && (
         <div className="day-detail">
-          <strong>{hoveredDay}</strong>
-          <span>余额: ¥{balanceMap[hoveredDay].balance.toLocaleString()}</span>
-          <span>收入: ¥{balanceMap[hoveredDay].income.toLocaleString()}</span>
-          <span>支出: ¥{balanceMap[hoveredDay].expense.toLocaleString()}</span>
+          <div className="day-detail-top">
+            <strong>{detailDay}</strong>
+            <span>余额: ¥{balanceMap[detailDay].balance.toLocaleString()}</span>
+            <span>收入: ¥{balanceMap[detailDay].income.toLocaleString()}</span>
+            <span>支出: ¥{balanceMap[detailDay].expense.toLocaleString()}</span>
+          </div>
+          {balanceMap[detailDay].events.length > 0 && (
+            <div className="day-detail-events">
+              {balanceMap[detailDay].events.map((e) => (
+                <div key={e.id} className={`day-detail-event ${e.isSimulation ? 'simulation' : ''}`}>
+                  <span className="dde-name" title="点击编辑" onClick={() => onEventClick(e)}>
+                    {e.isSimulation && <em>[模拟]</em>} {e.name}
+                  </span>
+                  <span className={`dde-amount ${e.type}`}>
+                    {e.type === 'income' ? '+' : '-'}¥{Math.abs(e.amount).toLocaleString()}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
   );
 }
+
+

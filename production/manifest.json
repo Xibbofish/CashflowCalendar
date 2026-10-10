@@ -1,0 +1,55 @@
+{
+  "capturedAt": "2026-10-10T09:49:42.735344+00:00",
+  "origin": "https://xibbofish.cn",
+  "projects": {
+    "cashflow": {
+      "release": "20261010-day-49aed1d",
+      "files": {
+        "assets/index-B-9VTG3g.css": {
+          "sha256": "e9c76c7ec69f60de14a8fe5b4ddacecd0b189267a6ce8f453d873dea1d7e0964",
+          "bytes": 14572
+        },
+        "assets/index-B0dBH_as.js": {
+          "sha256": "465027f50d8b094391f0d056dcaa926429e27d4038c8ac6293de43f0831eaf74",
+          "bytes": 257279
+        },
+        "assets/index-BF2jakBe.css": {
+          "sha256": "35da7a68b9bb23403c6c68dca6a1e23553b27c03fab139c853acf0078daff615",
+          "bytes": 16293
+        },
+        "assets/index-BHAufZlM.js": {
+          "sha256": "9087fbf33c0c575c44caa912647e1a9412dd36da8f227872cd4c0333b3913ab6",
+          "bytes": 263554
+        },
+        "assets/index-C7LQd2pB.js": {
+          "sha256": "00da50e3b51ad0df08af2da92ce59049803408b462d7beafcc087173c6bdb5b6",
+          "bytes": 258281
+        },
+        "assets/index-CxTjosI5.js": {
+          "sha256": "303a1be47ae2ff6331dcdb83312aed677c20961ccd3e83619a5ab71114e9d7ec",
+          "bytes": 263029
+        },
+        "assets/index-DkGNcWFC.js": {
+          "sha256": "4c86ea1c34608780f91fad7821aeb567a4d87a35d60e5c7718bf883c0e32f67d",
+          "bytes": 257957
+        },
+        "assets/index-DpwLOMhO.js": {
+          "sha256": "e934ef0541aeaeff844f0348cb5b923ae773fe5516eb8b9bdc537453e3e38dfe",
+          "bytes": 250791
+        },
+        "assets/index-tdNxviD_.css": {
+          "sha256": "6dcd57cec6dc9e9d5671c756c170c8dd956361e84e459dff7c4424cbc48fb594",
+          "bytes": 15420
+        },
+        "index.html": {
+          "sha256": "561c67fbf29442a8e56684ab77869e81c3be9d6df7d4d4e8d6bb05ed38ba8e64",
+          "bytes": 633
+        },
+        "release.json": {
+          "sha256": "bff86e85e295f48671190e76eeb43b0749683e62bc691d6a7619b79d16910be8",
+          "bytes": 278
+        }
+      }
+    }
+  }
+}

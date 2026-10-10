@@ -12,6 +12,7 @@ export default function EventList({ events, simulationEvents, onEdit, onDelete, 
     return map[t] || '';
   };
 
+
   return (
     <div className="event-list">
       <h4>事件列表</h4>
@@ -35,7 +36,7 @@ export default function EventList({ events, simulationEvents, onEdit, onDelete, 
                     {e.type === 'income' ? '+' : ''}¥{Math.abs(e.amount).toLocaleString()}
                   </span>
                   {e.isRecurring ? (
-                    <span className="event-period">{recurringLabel(e.recurringType)} · 从{e.recurringStartDate}起</span>
+                    <span className="event-period">{recurringLabel(e.recurringType)} · 从{e.recurringStartDate}起{!e.isPermanent && e.occurrenceCount ? ` · 共 ${e.occurrenceCount} 次` : ""}</span>
                   ) : (
                     <span className="event-date">{e.date}</span>
                   )}
@@ -59,3 +60,4 @@ export default function EventList({ events, simulationEvents, onEdit, onDelete, 
     </div>
   );
 }
+

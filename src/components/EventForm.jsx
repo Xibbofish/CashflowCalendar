@@ -1,27 +1,25 @@
-import { useState, useEffect } from 'react';
-import { normalizeEvent, RecurringType, EventType } from '../engine';
+import { useState } from 'react';
+import { normalizeEvent, RecurringType, EventType, DEFAULT_CATEGORIES } from '../engine';
+import { localDay } from '../local-day.js';
 
 const emptyForm = () => ({
   name: '',
   type: EventType.EXPENSE,
   amount: '',
-  date: new Date().toISOString().slice(0, 10),
+  date: localDay(),
   isRecurring: false,
   recurringType: RecurringType.MONTHLY,
-  recurringStartDate: new Date().toISOString().slice(0, 10),
+  recurringStartDate: localDay(),
   recurringEndDate: '',
   isPermanent: true,
-  canSkip: false,
+  duration: 'permanent',
+  occurrenceCount: '6',
   category: '',
   description: '',
 });
 
 export default function EventForm({ event, onSave, onCancel }) {
-  const [form, setForm] = useState(emptyForm());
-
-  useEffect(() => {
-    if (event) {
-      setForm({
+  const [form, setForm] = useState(() => event ? {
         name: event.name || '',
         type: event.type || EventType.EXPENSE,
         amount: String(Math.abs(event.amount || 0)),
@@ -31,12 +29,11 @@ export default function EventForm({ event, onSave, onCancel }) {
         recurringStartDate: event.recurringStartDate || (event.date || ''),
         recurringEndDate: event.recurringEndDate || '',
         isPermanent: Boolean(event.isPermanent),
-        canSkip: Boolean(event.canSkip),
+        duration: event.isPermanent ? 'permanent' : event.occurrenceCount ? 'count' : 'date',
+        occurrenceCount: String(event.occurrenceCount || 6),
         category: event.category || '',
         description: event.description || '',
-      });
-    }
-  }, [event]);
+      } : emptyForm());
 
   const update = (field, value) => setForm((f) => ({ ...f, [field]: value }));
 
@@ -53,9 +50,11 @@ export default function EventForm({ event, onSave, onCancel }) {
       isRecurring: form.isRecurring,
       recurringType: form.isRecurring ? form.recurringType : RecurringType.NONE,
       recurringStartDate: form.isRecurring ? form.recurringStartDate : '',
-      recurringEndDate: form.isRecurring && !form.isPermanent ? form.recurringEndDate : '',
-      isPermanent: form.isRecurring ? form.isPermanent : false,
-      canSkip: form.canSkip,
+      recurringEndDate: form.isRecurring && form.duration === 'date' ? form.recurringEndDate : '',
+      isPermanent: form.isRecurring && form.duration === 'permanent',
+      occurrenceCount: form.isRecurring && form.duration === 'count' ? Number(form.occurrenceCount) : null,
+      canSkip: event?.canSkip || false,
+      skippedDates: event?.skippedDates || [],
       category: form.category,
       description: form.description,
       isSimulation: event ? event.isSimulation : false,
@@ -119,29 +118,34 @@ export default function EventForm({ event, onSave, onCancel }) {
                   <label>持续时间</label>
                   <div className="radio-group">
                     <label className="radio-label">
-                      <input type="radio" name="duration" checked={form.isPermanent} onChange={() => update('isPermanent', true)} />
+                      <input type="radio" name="duration" checked={form.duration === 'permanent'} onChange={() => update('duration', 'permanent')} />
                       永久
                     </label>
                     <label className="radio-label">
-                      <input type="radio" name="duration" checked={!form.isPermanent} onChange={() => update('isPermanent', false)} />
+                      <input type="radio" name="duration" checked={form.duration === 'date'} onChange={() => update('duration', 'date')} />
                       至指定日期
+                    </label>
+                    <label className="radio-label">
+                      <input type="radio" name="duration" checked={form.duration === 'count'} onChange={() => update('duration', 'count')} />
+                      按次数结束
                     </label>
                   </div>
                 </div>
 
-                {!form.isPermanent && (
+                {form.duration === 'date' && (
                   <div className="form-group">
                     <label>结束日期</label>
                     <input type="date" value={form.recurringEndDate} onChange={(e) => update('recurringEndDate', e.target.value)} required />
                   </div>
                 )}
 
-                <div className="form-group">
-                  <label className="checkbox-label">
-                    <input type="checkbox" checked={form.canSkip} onChange={(e) => update('canSkip', e.target.checked)} />
-                    可跳过单次
-                  </label>
-                </div>
+                {form.duration === 'count' && (
+                  <div className="form-group">
+                    <label htmlFor="occurrence-count">发生次数</label>
+                    <input id="occurrence-count" type="number" value={form.occurrenceCount} onChange={(e) => update('occurrenceCount', e.target.value)} min="1" max="10000" step="1" required />
+                    <p className="data-tip">从开始日期算第 1 次。例如还有六次还款，开始日期填下一次还款日，次数填 6。</p>
+                  </div>
+                )}
               </>
             ) : (
               <div className="form-group">
@@ -150,9 +154,26 @@ export default function EventForm({ event, onSave, onCancel }) {
               </div>
             )}
 
-            <div className="form-group">
-              <label>备注</label>
-              <input type="text" value={form.description} onChange={(e) => update('description', e.target.value)} placeholder="选填" />
+            <div className="form-row">
+              <div className="form-group">
+                <label>分类</label>
+                <input
+                  type="text"
+                  list="category-suggestions"
+                  value={form.category}
+                  onChange={(e) => update('category', e.target.value)}
+                  placeholder={form.type === EventType.INCOME ? '例如：工资' : '例如：餐饮'}
+                />
+                <datalist id="category-suggestions">
+                  {DEFAULT_CATEGORIES[form.type].map((c) => (
+                    <option key={c} value={c} />
+                  ))}
+                </datalist>
+              </div>
+              <div className="form-group">
+                <label>备注</label>
+                <input type="text" value={form.description} onChange={(e) => update('description', e.target.value)} placeholder="选填" />
+              </div>
             </div>
           </div>
 
