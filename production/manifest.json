@@ -1,10 +1,18 @@
 {
-  "capturedAt": "2026-10-10T09:49:42.735344+00:00",
+  "capturedAt": "2026-10-18T08:57:21.047540+00:00",
   "origin": "https://xibbofish.cn",
   "projects": {
     "cashflow": {
       "release": "20261010-day-49aed1d",
       "files": {
+        "index.html": {
+          "sha256": "561c67fbf29442a8e56684ab77869e81c3be9d6df7d4d4e8d6bb05ed38ba8e64",
+          "bytes": 633
+        },
+        "release.json": {
+          "sha256": "bff86e85e295f48671190e76eeb43b0749683e62bc691d6a7619b79d16910be8",
+          "bytes": 278
+        },
         "assets/index-B-9VTG3g.css": {
           "sha256": "e9c76c7ec69f60de14a8fe5b4ddacecd0b189267a6ce8f453d873dea1d7e0964",
           "bytes": 14572
@@ -40,14 +48,6 @@
         "assets/index-tdNxviD_.css": {
           "sha256": "6dcd57cec6dc9e9d5671c756c170c8dd956361e84e459dff7c4424cbc48fb594",
           "bytes": 15420
-        },
-        "index.html": {
-          "sha256": "561c67fbf29442a8e56684ab77869e81c3be9d6df7d4d4e8d6bb05ed38ba8e64",
-          "bytes": 633
-        },
-        "release.json": {
-          "sha256": "bff86e85e295f48671190e76eeb43b0749683e62bc691d6a7619b79d16910be8",
-          "bytes": 278
         }
       }
     }

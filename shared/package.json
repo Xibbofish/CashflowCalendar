@@ -1,0 +1,35 @@
+{
+  "name": "webpersonal-shared",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "生活日历与四个独立应用的唯一手工维护公共核心来源（日期、模块纯逻辑、兼容性、存储、导入契约）。",
+  "exports": {
+    ".": "./index.js",
+    "./date": "./date/index.js",
+    "./errors": "./errors.js",
+    "./modules/cashflow/model.js": "./modules/cashflow/model.js",
+    "./modules/cashflow/engine.js": "./modules/cashflow/engine.js",
+    "./modules/cashflow/analysis.js": "./modules/cashflow/analysis.js",
+    "./modules/mood/model.js": "./modules/mood/model.js",
+    "./modules/period/model.js": "./modules/period/model.js",
+    "./modules/zodiac/model.js": "./modules/zodiac/model.js",
+    "./modules/zodiac/content.js": "./modules/zodiac/content.js",
+    "./compatibility/detect.js": "./compatibility/detect.js",
+    "./compatibility/envelope.js": "./compatibility/envelope.js",
+    "./compatibility/legacy-formats.js": "./compatibility/legacy-formats.js",
+    "./compatibility/import-plan.js": "./compatibility/import-plan.js",
+    "./compatibility/exports.js": "./compatibility/exports.js",
+    "./storage/local.js": "./storage/local.js",
+    "./app/store.js": "./app/store.js",
+    "./app/view-model.js": "./app/view-model.js",
+    "./app/import-flow.js": "./app/import-flow.js",
+    "./fixtures/index.js": "./fixtures/index.js"
+  },
+  "dependencies": {
+    "date-fns": "^4.4.0"
+  },
+  "scripts": {
+    "test": "node --test --test-isolation=none tests/*.test.mjs"
+  }
+}

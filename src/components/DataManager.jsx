@@ -1,10 +1,11 @@
 import { useState, useRef } from 'react';
-import { normalizeEvent } from '../engine';
 import { createMarkdownExport } from '../markdown-export.js';
+import { parseBackup } from '../storage.js';
 
-export default function DataManager({ state, currentBalance, onImport, onAdjustBalance }) {
+export default function DataManager({ state, currentBalance, onImport, onAdjustBalance, onClear }) {
   const [adjustAmount, setAdjustAmount] = useState('');
   const [lastImport, setLastImport] = useState(null);
+  const [importError, setImportError] = useState(null);
   const fileRef = useRef(null);
 
   const handleMarkdownExport = () => {
@@ -35,25 +36,27 @@ export default function DataManager({ state, currentBalance, onImport, onAdjustB
     URL.revokeObjectURL(url);
   };
 
+  /**
+   * 导入：与读取本机数据同一条严格管线（未知字段、非法金额、未来版本都拒绝）。
+   * 旧实现用 `normalizeEvent` 逐条填默认值，会把损坏备份“洗”成看似正常的数据。
+   */
   const handleImport = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
       try {
-        const raw = JSON.parse(ev.target.result);
-        const data = {
-          initialBalance: typeof raw.initialBalance === 'number' ? raw.initialBalance : 10000,
-          events: (raw.events || []).map(normalizeEvent),
-          simulationEvents: (raw.simulationEvents || []).map(normalizeEvent),
-        };
+        const data = parseBackup(String(ev.target.result));
+        setImportError(null);
         onImport(data);
         setLastImport(new Date().toLocaleString());
-        alert('数据导入成功！');
-      } catch {
-        alert('文件读取失败，请选择有效的 JSON 备份文件。');
+        alert('数据导入成功！已写入浏览器本机存储。');
+      } catch (error) {
+        setImportError(error?.message ?? '文件读取失败，请选择有效的 JSON 备份文件。');
+        alert(`导入失败，原有数据未改动。\n\n${error?.message ?? '文件读取失败，请选择有效的 JSON 备份文件。'}`);
       }
     };
+    reader.onerror = () => setImportError('文件无法读取，请重试或换一个文件。');
     reader.readAsText(file);
     e.target.value = '';
   };
@@ -67,11 +70,7 @@ export default function DataManager({ state, currentBalance, onImport, onAdjustB
   };
 
   const handleClear = () => {
-    if (window.confirm('确定要清除所有数据吗？此操作不可恢复！')) {
-      localStorage.removeItem('cashflow-calendar-data');
-      onImport({ initialBalance: 10000, events: [], simulationEvents: [] });
-      alert('所有数据已清除。');
-    }
+    if (window.confirm('确定要清除所有数据吗？此操作不可恢复！请先导出备份。')) onClear?.();
   };
 
   return (
@@ -87,6 +86,7 @@ export default function DataManager({ state, currentBalance, onImport, onAdjustB
       </div>
 
       <p className="data-tip">Markdown 包含财务数据与备注，分享给 AI 前请确认内容。导出在本地完成，文件含计划说明、预测对比和完整 JSON；恢复数据请使用 JSON 备份。</p>
+      {importError && <p className="form-error" role="alert">导入失败，原有数据未改动：{importError}</p>}
 
       <div className="balance-adjust">
         <h5>校准当前余额</h5>

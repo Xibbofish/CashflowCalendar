@@ -2,12 +2,33 @@ node_modules/
 dist/
 *.log
 
-# Private operational material
+# Backup/sync safety exclusions
+**/node_modules/
+**/dist/
+**/.runtime/
+**/.cache/
+**/__pycache__/
+**/screenshots/
+**/test-results/
+**/research/
+**/reference/
+**/data/cache/
+**/portal-dist/
+**/portal-baseline/
+**/dsh*
+**/.dsh*
 .env
 .env.*
-!.env.example
+**/.env
+**/.env.*
 *.pem
 *.key
 *.sqlite*
 *.db
+*.log
+*.tar
+*.tar.gz
+*.zip
+*.bundle
 .ops/
+WebsiteBackup*/

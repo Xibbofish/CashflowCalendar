@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "oxlint",
-    "test": "node --test --experimental-test-isolation=none src/engine.test.js src/markdown-export.test.js src/analysis.test.js src/local-day.test.js",
+    "test": "node --test --experimental-test-isolation=none src/engine.test.js src/markdown-export.test.js src/analysis.test.js src/local-day.test.js src/storage.test.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

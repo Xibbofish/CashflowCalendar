@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { format, subDays, addDays, parseISO } from 'date-fns';
 import useLocalDay from './useLocalDay.js';
 import { computeDailyBalances, getBalanceOnDate } from './engine';
@@ -10,30 +10,31 @@ import EventList from './components/EventList';
 import SimulationPanel from './components/SimulationPanel';
 import DataManager from './components/DataManager';
 import MonthlyReport from './components/MonthlyReport';
+import { DEFAULT_STATE, clearState, readState, writeState } from './storage.js';
 import './App.css';
 
 const STORAGE_KEY = 'cashflow-calendar-data';
 
-const defaultState = {
-  initialBalance: 10000,
-  events: [],
-  simulationEvents: [],
-};
-
+/**
+ * 本机数据状态（见 src/storage.js）。
+ *
+ * 关键要求：**打开页面时绝不覆盖写坏数据**。
+ * - 数据损坏 / 来自更高版本 / 存储不可用 → 只读模式（`blocked`），保存被跳过并显示原因；
+ * - 只有读取结果明确为 `ok` 或 `empty` 时才允许写入。
+ */
 function loadState() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch {}
-  return defaultState;
-}
-
-function saveState(state) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  return readState();
 }
 
 export default function App() {
-  const [state, setState] = useState(loadState);
+  const reading = useRef(null);
+  if (reading.current === null) reading.current = loadState();
+  const initial = reading.current;
+
+  const [state, setState] = useState(() => initial.data ?? DEFAULT_STATE);
+  const [blocked, setBlocked] = useState(initial.readonly === true);
+  const [rawBackup, setRawBackup] = useState(initial.raw ?? null);
+  const [storageError, setStorageError] = useState(initial.error ?? null);
   const todayStr = useLocalDay();
   const [browsedDate, setCurrentDate] = useState(null);
   const currentDate = browsedDate || parseISO(todayStr);
@@ -42,7 +43,41 @@ export default function App() {
   const [editingEvent, setEditingEvent] = useState(null);
   const [showSimulation, setShowSimulation] = useState(false);
 
-  useEffect(() => { saveState(state); }, [state]);
+  /** 保存：任何一次失败都要让用户看见，并保留原始数据。 */
+  useEffect(() => {
+    if (blocked) return;
+    try {
+      writeState(state);
+      setStorageError(null);
+    } catch (error) {
+      const message = error?.code === 'E_STORAGE_QUOTA'
+        ? '本机存储空间不足，这次改动没有保存。请先导出备份并清理浏览器存储。'
+        : `${error?.message ?? '本机存储写入失败'}这次改动没有保存。`;
+      setStorageError({ code: error?.code ?? 'E_STORAGE_FAILED', message });
+    }
+  }, [state, blocked]);
+
+  /** 只读模式下不接受任何改动：直接提示原因，不改内存数据，也不写盘。 */
+  const blockIfReadonly = useCallback(() => {
+    if (!blocked) return false;
+    const reason = storageError?.message ?? '本机数据当前只能查看。';
+    window.alert(`${reason}\n\n如需恢复：先下载原始数据备份，再清除本机数据。`);
+    return true;
+  }, [blocked, storageError]);
+
+  /** 清除本机数据（只读模式下也允许：这是用户明确的恢复动作，且不覆盖未知数据以外的东西）。 */
+  const handleClearAll = useCallback(() => {
+    try {
+      clearState();
+    } catch (error) {
+      setStorageError({ code: error?.code ?? 'E_STORAGE_FAILED', message: error?.message ?? '无法清除本机数据。' });
+      return;
+    }
+    setState(DEFAULT_STATE);
+    setRawBackup(null);
+    setBlocked(false);
+    setStorageError(null);
+  }, []);
 
   const rangeStart = format(subDays(currentDate, 90), 'yyyy-MM-dd');
   const rangeEnd = format(addDays(currentDate, 180), 'yyyy-MM-dd');
@@ -71,6 +106,7 @@ export default function App() {
   }, [cashFlowData, todayStr, todayBalance]);
 
   const handleAddEvent = useCallback((event) => {
+    if (blockIfReadonly()) return;
     const newEvent = { ...event, id: event.id || String(Date.now()) };
     if (event.isSimulation) {
       setState((s) => ({ ...s, simulationEvents: [...s.simulationEvents, newEvent] }));
@@ -79,9 +115,10 @@ export default function App() {
     }
     setShowForm(false);
     setEditingEvent(null);
-  }, []);
+  }, [blockIfReadonly]);
 
   const handleEditEvent = useCallback((event) => {
+    if (blockIfReadonly()) return;
     if (event.isSimulation) {
       setState((s) => ({
         ...s,
@@ -95,17 +132,19 @@ export default function App() {
     }
     setShowForm(false);
     setEditingEvent(null);
-  }, []);
+  }, [blockIfReadonly]);
 
   const handleDeleteEvent = useCallback((id, isSimulation) => {
+    if (blockIfReadonly()) return;
     if (isSimulation) {
       setState((s) => ({ ...s, simulationEvents: s.simulationEvents.filter((e) => e.id !== id) }));
     } else {
       setState((s) => ({ ...s, events: s.events.filter((e) => e.id !== id) }));
     }
-  }, []);
+  }, [blockIfReadonly]);
 
   const handleConvertToReal = useCallback((id) => {
+    if (blockIfReadonly()) return;
     setState((s) => {
       const sim = s.simulationEvents.find((e) => e.id === id);
       if (!sim) return s;
@@ -116,23 +155,27 @@ export default function App() {
         simulationEvents: s.simulationEvents.filter((e) => e.id !== id),
       };
     });
-  }, []);
+  }, [blockIfReadonly]);
 
   const handleImport = useCallback((data) => {
+    if (blockIfReadonly()) throw new Error('当前数据只读，请先备份并明确恢复，未导入。');
+    writeState(data);
+    setStorageError(null);
     setState({
       initialBalance: data.initialBalance,
       events: data.events,
       simulationEvents: data.simulationEvents,
     });
-  }, []);
+  }, [blockIfReadonly]);
 
   const handleAdjustBalance = useCallback((newBalance) => {
+    if (blockIfReadonly()) return;
     const today = new Date();
     const allEvents = [...state.events, ...state.simulationEvents];
     const currentComputed = getBalanceOnDate(state.initialBalance, allEvents, formatDate(today, 'yyyy-MM-dd'));
     const newInitial = state.initialBalance + (newBalance - currentComputed);
     setState((s) => ({ ...s, initialBalance: newInitial }));
-  }, [state.events, state.simulationEvents, state.initialBalance]);
+  }, [blockIfReadonly, state.events, state.simulationEvents, state.initialBalance]);
 
   const handleOpenEdit = useCallback((event) => {
     setEditingEvent(event);
@@ -167,6 +210,44 @@ export default function App() {
 
       <main className="app-main">
         <div className="main-content">
+          {(storageError || blocked) && (
+            <div className="storage-warning" role="alert">
+              <strong>{blocked ? '本机数据当前只能查看' : '本机数据没有保存'}</strong>
+              <p>{storageError?.message ?? '未知问题。'}</p>
+              <p className="storage-warning-note">
+                原始内容未被改动，也不会被自动覆盖。请先下载原始数据备份，再决定是否清除恢复。
+              </p>
+              <div className="storage-warning-actions">
+                <button
+                  type="button"
+                  className="header-btn"
+                  disabled={!rawBackup}
+                  onClick={() => {
+                    const blob = new Blob([rawBackup ?? ''], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `现金流日历-原始数据-${todayStr}.json`;
+                    link.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                >
+                  下载原始数据
+                </button>
+                <button
+                  type="button"
+                  className="header-btn"
+                  onClick={() => {
+                    if (!window.confirm('清除本机数据并恢复为空白状态？\n\n请先下载原始数据备份，此操作无法撤销。')) return;
+                    handleClearAll();
+                  }}
+                >
+                  清除本机数据并恢复空白
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="balance-info">
             <h3>当前余额: ¥{todayBalance.toLocaleString()}</h3>
             <p>未来180天最低余额: ¥{futureMinBalance.toLocaleString()}</p>
@@ -191,6 +272,7 @@ export default function App() {
             currentBalance={todayBalance}
             onImport={handleImport}
             onAdjustBalance={handleAdjustBalance}
+            onClear={handleClearAll}
           />
           <EventList
             events={state.events}
@@ -221,4 +303,5 @@ export default function App() {
     </div>
   );
 }
+
 

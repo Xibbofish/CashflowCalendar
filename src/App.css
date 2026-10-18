@@ -398,3 +398,12 @@ body {
 .analysis-details { margin-top: 16px; font-size: 13px; }
 .analysis-details summary { cursor: pointer; padding: 8px 0; }
 @media(max-width: 600px) { .analysis-controls { grid-template-columns: minmax(0, 1fr); } }
+
+/* 本机数据保护提示：损坏、版本过高或写入失败时显示，绝不静默覆盖 */
+.storage-warning { border: 1px solid #b45309; background: #fffbeb; border-radius: 8px; padding: 12px 14px; margin-bottom: 14px; }
+.storage-warning strong { display: block; margin-bottom: 6px; font-size: 15px; color: #92400e; }
+.storage-warning p { margin: 0 0 6px; font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.storage-warning-note { color: #6b7280; }
+.storage-warning-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.storage-warning-actions .header-btn { min-width: 0; }
+@media(max-width: 600px) { .storage-warning-actions .header-btn { flex: 1 1 100%; } }

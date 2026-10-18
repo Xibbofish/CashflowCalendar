@@ -1,2 +1,9 @@
 * text eol=lf
 production/** -text
+
+# Preserve synchronized source bytes
+frontend/** -text
+backend/** -text
+portrait-studio/** -text
+src/** -text
+shared/** -text
