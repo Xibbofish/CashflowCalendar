@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { format, subDays, addDays, parseISO } from 'date-fns';
 import useLocalDay from './useLocalDay.js';
 import { computeDailyBalances, getBalanceOnDate } from './engine';
@@ -11,9 +11,8 @@ import SimulationPanel from './components/SimulationPanel';
 import DataManager from './components/DataManager';
 import MonthlyReport from './components/MonthlyReport';
 import { DEFAULT_STATE, clearState, readState, writeState } from './storage.js';
+import { commitCashflowImport } from './data-transfer.js';
 import './App.css';
-
-const STORAGE_KEY = 'cashflow-calendar-data';
 
 /**
  * 本机数据状态（见 src/storage.js）。
@@ -27,9 +26,7 @@ function loadState() {
 }
 
 export default function App() {
-  const reading = useRef(null);
-  if (reading.current === null) reading.current = loadState();
-  const initial = reading.current;
+  const [initial] = useState(loadState);
 
   const [state, setState] = useState(() => initial.data ?? DEFAULT_STATE);
   const [blocked, setBlocked] = useState(initial.readonly === true);
@@ -157,16 +154,16 @@ export default function App() {
     });
   }, [blockIfReadonly]);
 
-  const handleImport = useCallback((data) => {
+  const handleImport = useCallback((preview) => {
     if (blockIfReadonly()) throw new Error('当前数据只读，请先备份并明确恢复，未导入。');
-    writeState(data);
+    const data = commitCashflowImport(preview, state);
     setStorageError(null);
     setState({
       initialBalance: data.initialBalance,
       events: data.events,
       simulationEvents: data.simulationEvents,
     });
-  }, [blockIfReadonly]);
+  }, [blockIfReadonly, state]);
 
   const handleAdjustBalance = useCallback((newBalance) => {
     if (blockIfReadonly()) return;
@@ -193,7 +190,7 @@ export default function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>现金流日历</h1>
+        <div><a className="return-tools" href="/tools/">← 返回工具列表</a><h1>现金流日历</h1></div>
         <div className="header-controls">
           <button className="header-btn" onClick={() => setShowSimulation(!showSimulation)}>
             {showSimulation ? '隐藏模拟' : '开启模拟'}

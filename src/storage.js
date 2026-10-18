@@ -18,6 +18,7 @@ import { LifeCalendarError, ErrorCode } from '../shared/errors.js';
 import { readLegacy, writeLegacy } from '../shared/modules/cashflow/model.js';
 
 export const STORAGE_KEY = 'cashflow-calendar-data';
+export const RECOVERY_KEY = 'cashflow-calendar:import-recovery:v1';
 
 export const DEFAULT_STATE = {
   initialBalance: 10000,
@@ -191,6 +192,7 @@ export function clearState(storage) {
     });
   }
   try {
+    resolved.storage.removeItem(RECOVERY_KEY);
     resolved.storage.removeItem(STORAGE_KEY);
   } catch (error) {
     throw new LifeCalendarError(ErrorCode.STORAGE_FAILED, { message: `无法清除本机数据：${error?.message ?? '未知问题'}` });

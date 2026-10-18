@@ -68,3 +68,5 @@ export {
   readImportFile,
   readImportFromLegacyKey,
 } from './app/import-flow.js';
+
+export { PERSONAL_DATA_FORMAT, PERSONAL_DATA_VERSION, validatePersonalData, exportPersonalData, exportModulePackage, extractModulePackage, combinePersonalData, personalDataToLegacy, exportAgentMarkdown } from './compatibility/personal-data.js';

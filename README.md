@@ -7,3 +7,8 @@
 Node.js 24 下执行 npm ci、npm test、npm run build；npm run dev 的基础路径为 /cashflow/。数据保存在浏览器；此仓库不包含真实财务记录、数据库或密钥。
 
 production/cashflow/ 为捕获时的线上原始资源，production/manifest.json 保存大小与 SHA-256。node scripts/verify-production.mjs 检查快照完整性；开发构建可能与旧发布不同。完整网站开发源码位于 [PersonalWebsite](https://github.com/Xibbofish/PersonalWebsite)。同步边界见 docs/SYNC-20261018.md。
+
+
+## 本地数据互通优化（未部署）
+
+标准单包与 Agent Markdown、整合包提取现金流、导入预览/取消、明确替换、恢复点下载和存储失败保护已实现，金额与周期算法保留。npm test 44 项通过。shared/ 是来自 WebPersonal 的依赖副本，导入路径按独立仓库布局适配。生产快照仍是实际已发布旧版本；详见 docs/TEST_REPORT.md。

@@ -36,7 +36,8 @@ export default function ChartView({ cashFlowData }) {
   const linePath = cashFlowData.map((d, i) => `${i === 0 ? 'M' : 'L'} ${xScale(i)} ${yScale(d.balance)}`).join(' ');
   const areaPath = `${linePath} L ${xScale(cashFlowData.length - 1)} ${PAD_T + chartH} L ${xScale(0)} ${PAD_T + chartH} Z`;
 
-  const trend = cashFlowData[cashFlowData.length - 1].balance > cashFlowData[0].balance ? 'up' : 'down';
+  const change = cashFlowData[cashFlowData.length - 1].balance - cashFlowData[0].balance;
+  const trend = change > 0 ? 'up' : change < 0 ? 'down' : 'flat';
 
   const yLabels = [];
   for (let i = 0; i <= 5; i++) {
@@ -62,7 +63,7 @@ export default function ChartView({ cashFlowData }) {
         <div className="chart-title">
           <h3>📈 现金流趋势分析</h3>
           <div className="trend-indicator">
-            <span className={`trend ${trend}`}>{trend === 'up' ? '↗️ 上升' : '↘️ 下降'}</span>
+            <span className={`trend ${trend}`}>{trend === 'up' ? '↗️ 上升' : trend === 'down' ? '↘️ 下降' : '→ 持平'}</span>
           </div>
         </div>
         <div className="chart-stats">

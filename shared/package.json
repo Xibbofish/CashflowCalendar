@@ -24,7 +24,8 @@
     "./app/store.js": "./app/store.js",
     "./app/view-model.js": "./app/view-model.js",
     "./app/import-flow.js": "./app/import-flow.js",
-    "./fixtures/index.js": "./fixtures/index.js"
+    "./fixtures/index.js": "./fixtures/index.js",
+    "./compatibility/personal-data.js": "./compatibility/personal-data.js"
   },
   "dependencies": {
     "date-fns": "^4.4.0"
