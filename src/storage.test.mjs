@@ -10,7 +10,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readState, writeState, parseBackup, clearState, STORAGE_KEY, DEFAULT_STATE } from './storage.js';
+import { readState, writeState, parseBackup, clearState, STORAGE_KEY, RECOVERY_KEY, DEFAULT_STATE } from './storage.js';
 
 const KEY = STORAGE_KEY;
 
@@ -185,8 +185,10 @@ test('有符号金额、零金额、永久次数原样往返', () => {
 
 test('清除：删除键并回到默认状态', () => {
   const storage = memoryStorage({ read: JSON.stringify(legacy()) });
+  storage.setItem(RECOVERY_KEY, JSON.stringify({ private: 'synthetic recovery' }));
   clearState(storage);
   assert.equal(storage.getItem(KEY), null);
+  assert.equal(storage.getItem(RECOVERY_KEY), null);
   assert.equal(readState(storage).kind, 'empty');
   assert.deepEqual(DEFAULT_STATE, { initialBalance: 10000, events: [], simulationEvents: [] });
   const broken = memoryStorage({ onRemove: () => { throw new Error('nope'); } });

@@ -1,3 +1,4 @@
+import { validatePersonalData } from './personal-data.js';
 /**
  * 旧格式读取：四种旧备份与统一备份 → 统一模块数据。
  *
@@ -49,6 +50,17 @@ export function normalizeIncoming(input, { format, now = null, today = null } = 
   const todayDate = today ?? toLocalDateString(now) ?? toLocalDateString(new Date());
   const nowDate = now instanceof Date ? now : new Date();
   switch (format) {
+    case 'personal-data': {
+      const packet = validatePersonalData(input, { today: todayDate });
+      const ids = Object.keys(packet.modules);
+      return {
+        [NORMALIZED]: true, format, sourceFormatVersion: packet.formatVersion,
+        moduleId: ids.length === 1 ? ids[0] : null, moduleIds: ids,
+        modules: Object.fromEntries(ids.map(id => [id, packet.modules[id].data])),
+        dependencies: Object.fromEntries(ids.map(id => [id, packet.modules[id].dependencies])),
+        ...(packet.workspace ? { settings: packet.workspace.settings, life: packet.workspace.life, provenance: packet.workspace.provenance } : {}),
+      };
+    }
     case 'unified': {
       // `today` 必须显式传给模块校验：月经的“今天或过去”约束只认本地日期字符串
       const envelope = validateEnvelope(input, { now: nowDate, today: todayDate });

@@ -5,6 +5,7 @@ import {createStorageManager, readStorage, probeStorage} from '../storage/local.
 import {applyImport as resolveImport} from '../compatibility/import-plan.js';
 import {localDate, validDate} from '../date/index.js';
 export const STORE_STATUS=['loading','ready','empty','corrupt','unsupported','unavailable'];
+export const IMPORT_RECOVERY_KEY='life-calendar:import-recovery:v1';
 const id=(prefix)=>`${prefix}-${globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`}`;
 
 export function createAppStore({storage=null,lock=null,now=()=>new Date(),today=()=>localDate(now()),initialData=null}={}) {
@@ -46,7 +47,10 @@ export function createAppStore({storage=null,lock=null,now=()=>new Date(),today=
   ensureWritable();if(baseRevision!==state.revision)throw new LifeCalendarError(ErrorCode.IMPORT_STALE,{message:'数据修订已改变，导入预览过期，请重新生成。'});
   const next=validateEnvelope({...candidate,revision:state.revision+1,updatedAt:now().toISOString()},{now:now(),today:today()});
   try{
-   await manager.commit({envelope:next,baseRevision});lastDraft=null;
+   const beforeWrite=meta.action==='import'
+    ? ()=>storage.setItem(IMPORT_RECOVERY_KEY,JSON.stringify(validateEnvelope(state.data,{now:now(),today:today()})))
+    : null;
+   await manager.commit({envelope:next,baseRevision,beforeWrite});lastDraft=null;
    emit({status:'ready',data:next,revision:next.revision,reading:null,readonly:false,dirty:false,lastError:null,error:null,lastSavedAt:now().toISOString()});
    return {ok:true,saved:true,revision:next.revision,envelope:next,...meta};
   }catch(error){lastDraft=next;emit({dirty:true});throw error;}
@@ -58,14 +62,15 @@ export function createAppStore({storage=null,lock=null,now=()=>new Date(),today=
  const dispatchSettings=(command)=>serial(()=>persist(applySettingsCommand(state.data,command)));
  const dispatchLife=(command)=>serial(()=>persist(applyLifeCommand(state.data,{...command,payload:{...command.payload,today:today()}},{now:now(),createId:()=>id('life')})));
  const reload=()=>serial(()=>{lastDraft=null;return loadReading(manager?manager.read():unavailable());});
- const clearStorage=()=>serial(async()=>{if(!manager)throw new LifeCalendarError(ErrorCode.STORAGE_UNAVAILABLE);await manager.clear();lastDraft=null;return loadReading(manager.read());});
+ const clearStorage=()=>serial(async()=>{if(!manager)throw new LifeCalendarError(ErrorCode.STORAGE_UNAVAILABLE);if(storage.removeItem)storage.removeItem(IMPORT_RECOVERY_KEY);else storage.setItem(IMPORT_RECOVERY_KEY,'');await manager.clear();lastDraft=null;return loadReading(manager.read());});
  const applyImport=(preview,decisions={})=>serial(async()=>{
   ensureWritable();const plan=preview?.plan??preview;
   if(!plan||plan.baseRevision!==state.revision)throw new LifeCalendarError(ErrorCode.IMPORT_STALE,{message:'导入预览已过期，请重新生成；本次没有写入数据。'});
-  const {envelope,stats}=resolveImport(plan,decisions,{current:state.data,now:now(),today:today()});return persist(envelope,{baseRevision:plan.baseRevision,stats});
+  const {envelope,stats}=resolveImport(plan,decisions,{current:state.data,now:now(),today:today()});return persist(envelope,{baseRevision:plan.baseRevision,stats,action:'import'});
  });
  const store={
   storageKey:STORAGE_KEY,init,initialize:init,getState:()=>snapshot,subscribe(fn){listeners.add(fn);return()=>listeners.delete(fn);},
+  getImportRecovery(){const raw=storage?.getItem(IMPORT_RECOVERY_KEY);return raw?validateEnvelope(JSON.parse(raw),{now:now(),today:today()}):null;},
   runModuleCommand:dispatchModule,dispatchModule,applyModuleCommand:dispatchModule,dispatchSettings,applySettingsCommand:dispatchSettings,dispatchLife,applyLifeCommand:dispatchLife,
   setEnabledModule:(module,enabled)=>dispatchSettings({type:'setEnabledModule',payload:{module,enabled}}),
   setModuleOrder:(order)=>dispatchSettings({type:'setModuleOrder',payload:{order}}),

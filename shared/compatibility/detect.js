@@ -19,6 +19,7 @@ export const MODULE_LABELS = {
 
 /** 默认大小上限（字节）。统一备份 40MB；旧格式沿用各自既有上限。 */
 export const DEFAULT_SIZE_LIMITS = {
+  'personal-data': 40 * 1024 * 1024,
   unified: 40 * 1024 * 1024,
   mood: 20 * 1024 * 1024,
   period: 5 * 1024 * 1024,
@@ -27,6 +28,7 @@ export const DEFAULT_SIZE_LIMITS = {
 };
 
 export const FORMAT_LABELS = {
+  'personal-data': '标准个人数据包',
   unified: '生活日历完整备份',
   mood: '心情日记备份',
   period: '月经记录本备份',
@@ -36,6 +38,7 @@ export const FORMAT_LABELS = {
 
 /** 各格式的顶层版本字段与受支持版本。 */
 export const FORMAT_VERSIONS = {
+  'personal-data': { field: 'formatVersion', supported: '1.0.0' },
   unified: { field: 'schemaVersion', supported: 1 },
   mood: { field: 'version', supported: 1 },
   period: { field: 'version', supported: 1 },
@@ -58,6 +61,7 @@ function isArrayField(value, key) {
 export function matchFormats(value) {
   const matches = [];
   if (!looksLikeObject(value)) return matches;
+  if (value.format === 'xibbofish.personal-data') matches.push('personal-data');
   if (value.format === 'life-calendar' && 'modules' in value) matches.push('unified');
   if ('initialBalance' in value && (isArrayField(value, 'events') || isArrayField(value, 'simulationEvents'))) matches.push('cashflow');
   if (isArrayField(value, 'periods') || isArrayField(value, 'daily')) matches.push('period');
@@ -110,7 +114,7 @@ export function detectFormat(value, { allowed = null } = {}) {
   }
   const format = matches[0];
   const version = checkVersion(format, value);
-  return { format, version, moduleId: format === 'unified' ? null : format };
+  return { format, version, moduleId: ['unified', 'personal-data'].includes(format) ? null : format };
 }
 
 /** 解析 JSON 文本；空内容与语法错误分别给出明确错误码。 */

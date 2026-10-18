@@ -18,6 +18,8 @@ import {
   cloneEnvelope,
   createEmptyEnvelope,
   validateEnvelope,
+  validateLife,
+  validateSettings,
 } from './envelope.js';
 import { MODULE_LABELS, NORMALIZED, isNormalized, normalizeIncoming } from './legacy-formats.js';
 
@@ -516,12 +518,20 @@ function isNormalizedIncoming(value) {
  */
 export function planImport(current, incoming, { baseRevision = null, now = new Date(), today = null, format = null, sourceKind = null, sourceKey = null } = {}) {
   const normalized = isNormalizedIncoming(incoming)
-    ? incoming
+    ? { ...incoming, modules: { ...incoming.modules } }
     : normalizeIncoming(incoming?.value !== undefined && incoming?.format ? incoming.value : incoming, {
       format: format ?? incoming?.format,
       now,
       today,
     });
+  // Even a branded normalized value may have been mutated after validation.
+  // Validate all payloads again before constructing conflict strategies.
+  for (const id of Object.keys(normalized.modules ?? {})) {
+    if (!MODULE_IDS.includes(id)) fail(ErrorCode.ENUM_INVALID, { message: `未知模块 ${id}。` });
+    normalized.modules[id] = MODULE_REGISTRY[id].validate(normalized.modules[id], { today });
+  }
+  if (normalized.settings) normalized.settings = validateSettings(normalized.settings);
+  if (normalized.life) normalized.life = validateLife(normalized.life, 'life', { today });
   const local = current ?? createEmptyEnvelope({ now });
   const modules = {};
   const warnings = [];
@@ -676,7 +686,7 @@ function normalizeLocalEnvelope(input, { now, today }) {
     const modules = {};
     for (const id of MODULE_IDS) {
       const entry = input.modules[id];
-      modules[id] = { schemaVersion: 1, data: MODULE_REGISTRY[id].validate(entry?.data ?? base.modules[id].data, { now: today }) };
+      modules[id] = { schemaVersion: 1, data: MODULE_REGISTRY[id].validate(entry?.data ?? base.modules[id].data, { today }) };
     }
     return {
       ...base,
@@ -718,6 +728,14 @@ export function applyImport(plan, decisions = {}, { current, now = new Date(), t
   const modules = {};
   const importStats = [];
   const isFullReplace = decisions.mode === 'full-replace';
+  for (const [id, dependencies] of Object.entries(plan.normalized.dependencies ?? {})) {
+    const choice = moduleDecisions[id] ?? plan.modules[id]?.decision ?? 'merge';
+    if (choice === 'skip') continue;
+    for (const dependency of dependencies) {
+      const dependencyChoice = moduleDecisions[dependency] ?? plan.modules[dependency]?.decision ?? 'merge';
+      if (!plan.modules[dependency]?.available || dependencyChoice === 'skip') fail(ErrorCode.SCHEMA_INVALID, { path: `modules.${id}.dependencies`, message: `${id} 需要同时导入依赖模块 ${dependency}，请调整选择或取消此模块。` });
+    }
+  }
 
   for (const id of MODULE_IDS) {
     const module = plan.modules[id];
@@ -752,7 +770,7 @@ export function applyImport(plan, decisions = {}, { current, now = new Date(), t
       }
     }
 
-    modules[id] = MODULE_REGISTRY[id].validate(nextData, { now: effectiveToday });
+    modules[id] = MODULE_REGISTRY[id].validate(nextData, { today: effectiveToday });
     importStats.push({
       id,
       decision,

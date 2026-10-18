@@ -164,9 +164,10 @@ export function createStorageManager({ storage, lock = null, now = () => new Dat
    *
    * @param options.envelope 待写入的完整 envelope（调用方已校验）
    * @param options.baseRevision 生成草稿/导入预览时的修订号
+   * @param options.beforeWrite 可选同步恢复点写入函数，在锁内全量校验和并发检查后执行；失败则主键不写
    * @returns `{ ok: true, revision }`，失败时抛出带错误码的 `LifeCalendarError`
    */
-  async function commit({ envelope, baseRevision = null }) {
+  async function commit({ envelope, baseRevision = null, beforeWrite = null }) {
     /**
      * 真正的提交体。**必须在锁内运行**：锁内才重新读取、比较修订、写入。
      */
@@ -201,6 +202,9 @@ export function createStorageManager({ storage, lock = null, now = () => new Dat
       const validated = validateEnvelope(envelope, { now: now(), today: today() });
       const text = serializeEnvelope(validated);
       try {
+        // Run recovery only after lock acquisition, stale-baseline checks and full validation.
+        // Synchronous callback keeps the recovery/main write sequence in one lock body.
+        if (beforeWrite) beforeWrite({ currentRaw });
         storage.setItem(STORAGE_KEY, text);
       } catch (error) {
         if (isQuotaError(error)) {
